@@ -77,7 +77,7 @@ def user_register(request):
             return render(request, "accounts/register.html", {"error": "Email already registered"})
 
         user = User.objects.create_user(username=username, email=email, password=password)
-        login(request, user)
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         status, _ = UserStatus.objects.get_or_create(user=user)
         status.online = True
         status.save()
