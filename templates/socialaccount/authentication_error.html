@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Authentication Error - NovaChat{% endblock %}
+
+{% block auth_content %}
+<div class="min-h-screen bg-gradient-to-br from-[#6C5CE7] via-[#81ecec] to-[#a29bfe] flex items-center justify-center p-4">
+    <div class="bg-white/95 backdrop-blur-xl w-full max-w-md rounded-3xl p-8 shadow-2xl text-center transform transition-all border border-white/40">
+        
+        <!-- NovaChat Brand Logo -->
+        <div class="relative w-20 h-20 mx-auto mb-5">
+            <img src="{% static 'images/logo.png' %}" alt="NovaChat Logo" class="w-20 h-20 rounded-2xl object-cover shadow-xl ring-4 ring-rose-500/20 mx-auto">
+        </div>
+
+        <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-xl mx-auto mb-4">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+
+        <h2 class="font-outfit font-extrabold text-2xl text-gray-800">Authentication Error</h2>
+        <p class="text-xs text-gray-500 mt-2 mb-6">
+            An error occurred while attempting to sign in with your social account.
+        </p>
+
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl text-xs text-left mb-6">
+            <p class="font-semibold mb-1">Possible Causes:</p>
+            <ul class="list-disc list-inside space-y-1 text-[11px]">
+                <li>Authorization request was cancelled</li>
+                <li>Mismatch in Google Authorized Redirect URIs</li>
+                <li>Network timeout during token verification</li>
+            </ul>
+        </div>
+
+        <a href="{% url 'login' %}" class="block w-full py-3.5 bg-[#6C5CE7] hover:bg-[#5849D6] text-white rounded-xl font-bold text-sm shadow-lg shadow-[#6C5CE7]/30 transition-all text-center">
+            Return to Login Page
+        </a>
+
+    </div>
+</div>
+{% endblock %}

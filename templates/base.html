@@ -1,0 +1,885 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NovaChat App{% endblock %}</title>
+    <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- HTML5 QR Code Reader JS -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <!-- Production Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+
+    <!-- Global Custom Theme & Application CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    <!-- Non-Blocking Early Theme Initializer Script -->
+    <script>
+        (function() {
+            const saved = localStorage.getItem('novachat_theme');
+            const theme = (saved === 'light' || saved === 'dark') 
+                ? saved 
+                : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <!-- Theme Manager JS -->
+    <script src="{% static 'js/theme.js' %}"></script>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="bg-[var(--bg-app)] text-[var(--text-main)] min-h-screen flex flex-col antialiased transition-colors duration-300">
+    {% if user.is_authenticated %}
+    <div class="flex min-h-screen relative w-full">
+
+        <!-- Mobile Drawer Overlay -->
+        <div id="drawerOverlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+
+        <!-- Sidebar Drawer (Reference Design #4) -->
+        <aside id="sidebarDrawer" class="fixed top-0 bottom-0 left-0 w-72 bg-[var(--bg-sidebar)] text-[var(--sidebar-text)] flex flex-col p-6 z-50 transform -translate-x-full lg:translate-x-0 transition-colors duration-300 ease-in-out shadow-2xl border-r border-[var(--sidebar-border)]">
+            <!-- User Profile Header -->
+            <div class="flex items-center gap-3.5 pb-6 border-b border-[var(--sidebar-border)] mb-6">
+                {% if user.profile.profile_picture %}
+                <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}" class="w-12 h-12 rounded-full object-cover ring-2 ring-[var(--primary)]">
+                {% else %}
+                <div class="w-12 h-12 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-bold text-lg ring-2 ring-[var(--primary-glow)]">
+                    {{ user.username|slice:":1"|upper }}
+                </div>
+                {% endif %}
+                <div class="truncate">
+                    <h3 class="font-outfit font-semibold text-[var(--sidebar-text)] text-base truncate">{{ user.username }}</h3>
+                    <span class="text-xs text-[var(--online-green)] flex items-center gap-1.5 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-[var(--online-green)] animate-pulse"></span> Online
+                    </span>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex flex-col gap-1.5 flex-1">
+                <a href="{% url 'home' %}" class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all {% if request.resolver_match.url_name == 'home' %}bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-lg shadow-[var(--primary-glow)]{% else %}text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)]{% endif %}">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-house w-5 text-center"></i> Dashboard</div>
+                </a>
+
+                <a href="{% url 'chats' %}" class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all {% if request.resolver_match.url_name == 'chats' %}bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-lg shadow-[var(--primary-glow)]{% else %}text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)]{% endif %}">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-comments w-5 text-center"></i> All Chats</div>
+                </a>
+
+                <a href="{% url 'search' %}" class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all {% if request.resolver_match.url_name == 'search' %}bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-lg shadow-[var(--primary-glow)]{% else %}text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)]{% endif %}">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-user-plus w-5 text-center"></i> Contacts & Search</div>
+                </a>
+
+                <a href="{% url 'friend_requests' %}" class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all {% if request.resolver_match.url_name == 'friend_requests' %}bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-lg shadow-[var(--primary-glow)]{% else %}text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)]{% endif %}">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-user-clock w-5 text-center"></i> Friend Requests</div>
+                </a>
+
+                <a href="{% url 'calls' %}" class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all {% if request.resolver_match.url_name == 'calls' %}bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-lg shadow-[var(--primary-glow)]{% else %}text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)]{% endif %}">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-phone w-5 text-center"></i> Calls Log</div>
+                </a>
+
+                <a href="#" onclick="openQRModal(); return false;" class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)] transition-all">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-qrcode w-5 text-center"></i> My QR Code & Scanner</div>
+                </a>
+
+                <a href="{% url 'settings' %}" class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all {% if request.resolver_match.url_name == 'settings' %}bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-lg shadow-[var(--primary-glow)]{% else %}text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)]{% endif %}">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-gear w-5 text-center"></i> Settings</div>
+                </a>
+
+                <a href="{% url 'profile' %}" class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all {% if request.resolver_match.url_name == 'profile' %}bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-lg shadow-[var(--primary-glow)]{% else %}text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-hover-text)]{% endif %}">
+                    <div class="flex items-center gap-3"><i class="fa-solid fa-user w-5 text-center"></i> Profile</div>
+                </a>
+            </nav>
+
+            <!-- Logout Link -->
+            <a href="{% url 'logout' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 transition-all mt-auto border-t border-[var(--sidebar-border)] pt-4">
+                <i class="fa-solid fa-right-from-bracket w-5 text-center"></i> Log out
+            </a>
+        </aside>
+
+        <!-- Main Area -->
+        <main class="flex-1 lg:ml-72 flex flex-col min-h-screen bg-[var(--bg-app)] pb-16 lg:pb-0">
+            <!-- Top Header Bar -->
+            <header class="sticky top-0 z-30 bg-[var(--bg-header)] border-b border-[var(--border-color)] px-6 py-4 flex items-center justify-between shadow-sm">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleDrawer()" class="lg:hidden w-10 h-10 rounded-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--border-color)] transition-all">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <h1 class="font-outfit font-bold text-xl text-[var(--text-main)]">{% block page_title %}NovaChat{% endblock %}</h1>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <!-- Custom Animated Theme Switcher Button -->
+                    <button class="theme-switch-btn" onclick="toggleTheme()" type="button" aria-label="Toggle Theme" title="Toggle Light / Dark Mode">
+                        <span class="theme-icon theme-icon-sun"><i class="fa-solid fa-sun"></i></span>
+                        <span class="theme-icon theme-icon-moon"><i class="fa-solid fa-moon"></i></span>
+                        <span class="theme-switch-thumb"></span>
+                    </button>
+
+                    <button onclick="openQRModal()" class="w-10 h-10 rounded-full bg-[var(--primary-light)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white flex items-center justify-center transition-all shadow-sm" title="Scan QR Code">
+                        <i class="fa-solid fa-qrcode text-lg"></i>
+                    </button>
+                    <a href="{% url 'profile' %}" class="w-10 h-10 rounded-full overflow-hidden border-2 border-[var(--primary)] flex items-center justify-center bg-[var(--primary)] text-white font-bold" title="Profile">
+                        {% if user.profile.profile_picture %}
+                        <img src="{{ user.profile.profile_picture.url }}" alt="Avatar" class="w-full h-full object-cover">
+                        {% else %}
+                        {{ user.username|slice:":1"|upper }}
+                        {% endif %}
+                    </a>
+                </div>
+            </header>
+
+            <!-- Page Body -->
+            <div class="flex-1">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+
+        <!-- Bottom Mobile Navigation Bar -->
+        <nav class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--bg-header)] border-t border-[var(--border-color)] flex items-center justify-around z-40 shadow-lg">
+            <a href="{% url 'home' %}" class="flex flex-col items-center gap-1 text-xs font-medium {% if request.resolver_match.url_name == 'home' %}text-[var(--primary)]{% else %}text-[var(--text-muted)]{% endif %}">
+                <i class="fa-solid fa-house text-lg"></i> Home
+            </a>
+            <a href="{% url 'chats' %}" class="flex flex-col items-center gap-1 text-xs font-medium {% if request.resolver_match.url_name == 'chats' %}text-[var(--primary)]{% else %}text-[var(--text-muted)]{% endif %}">
+                <i class="fa-solid fa-comments text-lg"></i> Chats
+            </a>
+            <a href="{% url 'calls' %}" class="flex flex-col items-center gap-1 text-xs font-medium {% if request.resolver_match.url_name == 'calls' %}text-[var(--primary)]{% else %}text-[var(--text-muted)]{% endif %}">
+                <i class="fa-solid fa-phone text-lg"></i> Calls
+            </a>
+            <a href="{% url 'search' %}" class="flex flex-col items-center gap-1 text-xs font-medium {% if request.resolver_match.url_name == 'search' %}text-[var(--primary)]{% else %}text-[var(--text-muted)]{% endif %}">
+                <i class="fa-solid fa-user-plus text-lg"></i> Contacts
+            </a>
+            <a href="{% url 'settings' %}" class="flex flex-col items-center gap-1 text-xs font-medium {% if request.resolver_match.url_name == 'settings' %}text-[var(--primary)]{% else %}text-[var(--text-muted)]{% endif %}">
+                <i class="fa-solid fa-gear text-lg"></i> Settings
+            </a>
+        </nav>
+    </div>
+
+    <!-- Global Toast Notification Banner -->
+    <div id="toastNotification" class="fixed top-5 right-5 z-50 max-w-sm bg-[var(--bg-card)] text-[var(--text-main)] rounded-2xl p-4 shadow-2xl border border-[var(--border-color)] hidden transform transition-all duration-300 items-center gap-3">
+        <div id="toastAvatar" class="w-11 h-11 rounded-full bg-indigo-50 text-[#6C5CE7] font-bold text-base flex items-center justify-center shrink-0">
+            💬
+        </div>
+        <div class="flex-1 min-w-0">
+            <h4 id="toastTitle" class="font-outfit font-bold text-xs text-gray-800 truncate">Notification</h4>
+            <p id="toastBody" class="text-xs text-gray-500 truncate">New alert received</p>
+        </div>
+        <button onclick="dismissToast()" class="text-gray-400 hover:text-gray-600 text-sm p-1">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <!-- Global QR Code Modal -->
+    <div id="qrModalBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 relative shadow-2xl text-center transform transition-all">
+            <button onclick="closeQRModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="flex justify-center gap-2 mb-5">
+                <button id="tabMyQrBtn" onclick="switchQRTab('myqr')" class="px-5 py-2 rounded-full text-xs font-semibold bg-[#6C5CE7] text-white transition-all">My QR Code</button>
+                <button id="tabScanQrBtn" onclick="switchQRTab('scanqr')" class="px-5 py-2 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">Scan Friend QR</button>
+            </div>
+
+            <!-- Tab 1: My QR Code -->
+            <div id="tabMyQr">
+                <h3 class="font-outfit font-bold text-gray-800 text-lg">Scan to Add Me</h3>
+                <p class="text-xs text-gray-500 mt-1">Friends can scan this QR code to add you instantly</p>
+
+                <div class="inline-block p-4 bg-white border-2 border-indigo-100 rounded-2xl shadow-sm my-4">
+                    {% if user.profile.qr_code %}
+                    <img src="{{ user.profile.qr_code.url }}" alt="My QR Code" class="w-48 h-48 object-contain mx-auto">
+                    {% else %}
+                    <p class="text-xs text-gray-400 p-10">Generating QR Code...</p>
+                    {% endif %}
+                </div>
+
+                <div class="font-semibold text-gray-800 text-sm">@{{ user.username }}</div>
+                <div class="text-xs text-gray-400 mt-0.5">Payload: chatapp:user:{{ user.id }}</div>
+            </div>
+
+            <!-- Tab 2: Scan QR Camera -->
+            <div id="tabScanQr" class="hidden">
+                <h3 class="font-outfit font-bold text-gray-800 text-lg">Camera QR Scanner</h3>
+                <p class="text-xs text-gray-500 mt-1">Point camera at QR code or enter code manually</p>
+
+                <div id="scannerReaderBox" class="w-full h-60 bg-black rounded-2xl overflow-hidden my-4 relative flex items-center justify-center"></div>
+
+                <div id="scanResultAlert" class="hidden p-3 rounded-xl text-xs font-medium text-left mb-3"></div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="manualQrInput" placeholder="chatapp:user:ID or username" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-xs focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]">
+                    <button onclick="submitManualQR()" class="px-5 py-2.5 bg-[#6C5CE7] hover:bg-[#5849D6] text-white rounded-xl text-xs font-semibold transition-all">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. CALLER SIDE: OUTGOING CALLING MODAL (User 1 sees this while calling User 2) -->
+    <div id="outgoingCallModalBackdrop" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl relative">
+            <div class="w-24 h-24 rounded-full bg-indigo-50 text-[#6C5CE7] font-bold text-3xl flex items-center justify-center mx-auto mb-4 ring-4 ring-indigo-100 overflow-hidden relative">
+                <span id="outCalleeAvatar">📞</span>
+                <span class="absolute inset-0 rounded-full border-2 border-[#6C5CE7] animate-ping opacity-40"></span>
+            </div>
+            <h3 id="outCalleeName" class="font-outfit font-bold text-xl text-gray-800">Calling...</h3>
+            <p id="outCallType" class="text-xs font-semibold text-[#6C5CE7] mt-1">Ringing user...</p>
+
+            <div class="mt-8">
+                <button onclick="endWebRTCCall()" class="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center text-xl shadow-lg shadow-red-500/40 transition-all mx-auto" title="Cancel Call">
+                    <i class="fa-solid fa-phone-slash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. RECEIVER SIDE: INCOMING CALL POPUP MODAL (User 2 sees this when User 1 calls) -->
+    <div id="incomingCallModalBackdrop" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl relative">
+            <div id="incCallerAvatar" class="w-24 h-24 rounded-full bg-indigo-50 text-[#6C5CE7] font-bold text-3xl flex items-center justify-center mx-auto mb-4 ring-4 ring-indigo-200 overflow-hidden">
+                📞
+            </div>
+            <h3 id="incCallerName" class="font-outfit font-bold text-xl text-gray-800">Incoming Call</h3>
+            <p id="incCallType" class="text-xs font-semibold text-[#6C5CE7] mt-1">Incoming Voice Call...</p>
+
+            <div class="flex items-center justify-center gap-6 mt-8">
+                <!-- Deny / Decline Button -->
+                <button onclick="declineCall()" class="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center text-2xl shadow-xl shadow-red-500/40 transition-all transform hover:scale-105" title="Decline / Deny Call">
+                    <i class="fa-solid fa-phone-slash"></i>
+                </button>
+                <!-- Pickup / Accept Button -->
+                <button onclick="acceptCall()" class="w-16 h-16 rounded-full bg-[#00B894] hover:bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-xl shadow-emerald-500/40 transition-all transform hover:scale-105" title="Pickup / Accept Call">
+                    <i class="fa-solid fa-phone"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. BOTH USERS: ACTIVE LIVE WEBRTC CALL SCREEN MODAL -->
+    <div id="activeCallModalBackdrop" class="fixed inset-0 bg-black/90 backdrop-blur-lg z-50 hidden items-center justify-center p-4">
+        <div class="bg-gray-900 w-full max-w-3xl rounded-3xl overflow-hidden relative shadow-2xl flex flex-col h-[85vh]">
+            
+            <div class="p-4 bg-gray-900/80 backdrop-blur-md flex items-center justify-between text-white z-10">
+                <div class="flex items-center gap-3">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#00B894] animate-ping"></span>
+                    <span id="activeCallTitle" class="font-outfit font-bold text-sm">Live Call</span>
+                </div>
+                <span id="activeCallTimer" class="text-xs text-gray-400 font-mono">00:00</span>
+            </div>
+
+            <!-- Video Stream Box -->
+            <div class="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+                <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                <audio id="remoteAudio" autoplay></audio>
+                
+                <video id="localVideo" autoplay playsinline muted class="w-32 h-44 rounded-2xl border-2 border-white/50 object-cover absolute bottom-4 right-4 shadow-2xl bg-gray-800"></video>
+
+                <!-- Voice Call Placeholder Avatar (If voice call or remote video off) -->
+                <div id="voiceCallPlaceholder" class="hidden absolute inset-0 bg-gray-900 flex-col items-center justify-center text-white">
+                    <div id="voiceAvatar" class="w-28 h-28 rounded-full bg-[#6C5CE7] text-white font-bold text-4xl flex items-center justify-center mb-4 ring-4 ring-white/20">
+                        🎙️
+                    </div>
+                    <h3 id="voicePeerName" class="font-outfit font-bold text-xl">In Voice Call</h3>
+                </div>
+            </div>
+
+            <!-- Call Controls Bar -->
+            <div class="p-6 bg-gray-900 flex items-center justify-center gap-6 z-10">
+                <button id="micToggleBtn" onclick="toggleMuteMic()" class="w-12 h-12 rounded-full bg-gray-800 text-white hover:bg-gray-700 flex items-center justify-center text-lg transition-all" title="Toggle Mic">
+                    <i class="fa-solid fa-microphone"></i>
+                </button>
+                <button id="camToggleBtn" onclick="toggleCamera()" class="w-12 h-12 rounded-full bg-gray-800 text-white hover:bg-gray-700 flex items-center justify-center text-lg transition-all" title="Toggle Camera">
+                    <i class="fa-solid fa-video"></i>
+                </button>
+                <button onclick="endWebRTCCall()" class="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center text-xl shadow-xl shadow-red-500/40 transition-all" title="End Call">
+                    <i class="fa-solid fa-phone-slash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    {% block auth_content %}{% endblock %}
+    {% endif %}
+
+    <script>
+        const currentUserId = parseInt("{{ user.id|default:0 }}") || 0;
+
+        function toggleDrawer() {
+            const drawer = document.getElementById('sidebarDrawer');
+            const overlay = document.getElementById('drawerOverlay');
+            if (drawer) drawer.classList.toggle('-translate-x-full');
+            if (overlay) overlay.classList.toggle('hidden');
+        }
+
+        let html5QrScanner = null;
+
+        function openQRModal() {
+            document.getElementById('qrModalBackdrop').classList.remove('hidden');
+            document.getElementById('qrModalBackdrop').classList.add('flex');
+            switchQRTab('myqr');
+        }
+
+        function closeQRModal() {
+            document.getElementById('qrModalBackdrop').classList.add('hidden');
+            document.getElementById('qrModalBackdrop').classList.remove('flex');
+            stopScanner();
+        }
+
+        function switchQRTab(tab) {
+            const myQrTab = document.getElementById('tabMyQr');
+            const scanQrTab = document.getElementById('tabScanQr');
+            const tabMyBtn = document.getElementById('tabMyQrBtn');
+            const tabScanBtn = document.getElementById('tabScanQrBtn');
+
+            if (tab === 'myqr') {
+                myQrTab.classList.remove('hidden');
+                scanQrTab.classList.add('hidden');
+                tabMyBtn.className = 'px-5 py-2 rounded-full text-xs font-semibold bg-[#6C5CE7] text-white transition-all';
+                tabScanBtn.className = 'px-5 py-2 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all';
+                stopScanner();
+            } else {
+                myQrTab.classList.add('hidden');
+                scanQrTab.classList.remove('hidden');
+                tabScanBtn.className = 'px-5 py-2 rounded-full text-xs font-semibold bg-[#6C5CE7] text-white transition-all';
+                tabMyBtn.className = 'px-5 py-2 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all';
+                startScanner();
+            }
+        }
+
+        function startScanner() {
+            if (html5QrScanner) return;
+            html5QrScanner = new Html5Qrcode("scannerReaderBox");
+            html5QrScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 180, height: 180 } },
+                onScanSuccess,
+                onScanFailure
+            ).catch(err => {
+                document.getElementById('scannerReaderBox').innerHTML = `
+                    <div class="text-white p-6 text-xs text-center">
+                        <i class="fa-solid fa-camera-slash text-2xl mb-2"></i><br>
+                        Camera unavailable.<br>Use manual input below.
+                    </div>
+                `;
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrScanner) {
+                html5QrScanner.stop().then(() => {
+                    html5QrScanner.clear();
+                    html5QrScanner = null;
+                }).catch(err => console.log(err));
+            }
+        }
+
+        function onScanSuccess(decodedText) {
+            stopScanner();
+            processScannedPayload(decodedText);
+        }
+
+        function onScanFailure(err) {}
+
+        function submitManualQR() {
+            const val = document.getElementById('manualQrInput').value.trim();
+            if (val) processScannedPayload(val);
+        }
+
+        function processScannedPayload(payloadText) {
+            const alertBox = document.getElementById('scanResultAlert');
+            alertBox.classList.remove('hidden');
+            alertBox.className = 'p-3 rounded-xl text-xs font-medium text-left mb-3 bg-blue-50 text-blue-700';
+            alertBox.innerText = 'Processing QR code...';
+
+            fetch("{% url 'scan_qr' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ qr_payload: payloadText })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alertBox.className = 'p-3 rounded-xl text-xs font-medium text-left mb-3 bg-emerald-50 text-emerald-700';
+                    alertBox.innerText = data.message;
+                    setTimeout(() => {
+                        closeQRModal();
+                        window.location.href = "/chat/" + data.user_id + "/";
+                    }, 1200);
+                } else {
+                    alertBox.className = 'p-3 rounded-xl text-xs font-medium text-left mb-3 bg-amber-50 text-amber-700';
+                    alertBox.innerText = data.message;
+                }
+            })
+            .catch(err => {
+                alertBox.className = 'p-3 rounded-xl text-xs font-medium text-left mb-3 bg-red-50 text-red-700';
+                alertBox.innerText = "Error scanning QR code.";
+            });
+        }
+
+        // ==========================================================================
+        // WEBAUDIO RINGTONE & NOTIFICATION SYNTHESIZER
+        // ==========================================================================
+        let audioCtx = null;
+        let ringtoneTimer = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioCtx;
+        }
+
+        function playChimeSound() {
+            try {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch(e){}
+        }
+
+        function startRingtone() {
+            stopRingtone();
+            ringtoneTimer = setInterval(() => {
+                playChimeSound();
+            }, 1000);
+        }
+
+        function stopRingtone() {
+            if (ringtoneTimer) {
+                clearInterval(ringtoneTimer);
+                ringtoneTimer = null;
+            }
+        }
+
+        function showToast(title, body, avatarUrl) {
+            playChimeSound();
+            const toast = document.getElementById('toastNotification');
+            document.getElementById('toastTitle').innerText = title;
+            document.getElementById('toastBody').innerText = body;
+            const avatarBox = document.getElementById('toastAvatar');
+            if (avatarUrl) {
+                avatarBox.innerHTML = `<img src="${avatarUrl}" class="w-full h-full rounded-full object-cover">`;
+            } else {
+                avatarBox.innerText = '💬';
+            }
+
+            toast.classList.remove('hidden');
+            toast.classList.add('flex');
+            setTimeout(() => { dismissToast(); }, 4000);
+        }
+
+        function dismissToast() {
+            const toast = document.getElementById('toastNotification');
+            if (toast) {
+                toast.classList.add('hidden');
+                toast.classList.remove('flex');
+            }
+        }
+
+        // ==========================================================================
+        // WEBRTC CALL ENGINE & GLOBAL NOTIFICATIONS
+        // ==========================================================================
+        let notifySocket = null;
+        let peerConnection = null;
+        let localStream = null;
+        let currentCallTargetId = null;
+        let activeCallType = 'Voice';
+        let pendingCallOffer = null;
+        let callTimerInterval = null;
+        let pendingCandidates = [];
+
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        function sendSignal(payload) {
+            // Dual Dispatch: WebSocket + HTTP POST Fallback to ensure target receives signal 100%
+            if (notifySocket && notifySocket.readyState === WebSocket.OPEN) {
+                notifySocket.send(JSON.stringify(payload));
+            }
+            fetch("/chat/api/send_call_signal/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify(payload)
+            }).catch(err => {});
+        }
+
+        function initNotificationSocket() {
+            if (currentUserId <= 0) return;
+            const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+            notifySocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/notifications/`);
+
+            notifySocket.onmessage = async function(e) {
+                const data = JSON.parse(e.data);
+                
+                if (data.type === 'new_message_alert') {
+                    showToast(`Message from @${data.sender_username}`, data.message);
+                }
+
+                if (data.type === 'call_offer') {
+                    // Receiver gets incoming call!
+                    if (currentUserId === data.sender_id) return; // ignore self
+                    pendingCallOffer = data;
+                    startRingtone();
+
+                    showToast(`Incoming ${data.call_type} Call`, `@${data.sender_username} is calling you...`);
+
+                    document.getElementById('incCallerName').innerText = data.sender_username;
+                    document.getElementById('incCallType').innerText = `Incoming ${data.call_type} Call...`;
+                    const avatarBox = document.getElementById('incCallerAvatar');
+                    if (data.sender_avatar) {
+                        avatarBox.innerHTML = `<img src="${data.sender_avatar}" class="w-full h-full object-cover">`;
+                    } else {
+                        avatarBox.innerText = data.sender_username.slice(0, 1).toUpperCase();
+                    }
+
+                    const modal = document.getElementById('incomingCallModalBackdrop');
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+
+                if (data.type === 'call_answer') {
+                    stopRingtone();
+
+                    // Close Caller's Outgoing Modal & Open Active Call Screen
+                    const outModal = document.getElementById('outgoingCallModalBackdrop');
+                    outModal.classList.add('hidden');
+                    outModal.classList.remove('flex');
+
+                    const activeModal = document.getElementById('activeCallModalBackdrop');
+                    activeModal.classList.remove('hidden');
+                    activeModal.classList.add('flex');
+
+                    if (peerConnection && data.sdp) {
+                        try {
+                            const desc = new RTCSessionDescription(data.sdp);
+                            await peerConnection.setRemoteDescription(desc);
+                            flushPendingIceCandidates();
+                            startCallTimer();
+                        } catch(err) {
+                            console.log("Error setting remote answer SDP:", err);
+                        }
+                    }
+                }
+
+                if (data.type === 'ice_candidate') {
+                    if (data.candidate) {
+                        if (peerConnection && peerConnection.remoteDescription) {
+                            peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(err => {});
+                        } else {
+                            pendingCandidates.push(data.candidate);
+                        }
+                    }
+                }
+
+                if (data.type === 'call_declined') {
+                    stopRingtone();
+                    showToast('Call Declined', `@${data.sender_username} declined the call.`);
+                    closeAllCallModals();
+                }
+
+                if (data.type === 'call_ended') {
+                    stopRingtone();
+                    showToast('Call Ended', 'The call has ended.');
+                    closeAllCallModals();
+                }
+            };
+
+            notifySocket.onclose = function() {
+                setTimeout(initNotificationSocket, 3000);
+            };
+        }
+
+        initNotificationSocket();
+
+        function flushPendingIceCandidates() {
+            if (peerConnection && peerConnection.remoteDescription && pendingCandidates.length > 0) {
+                pendingCandidates.forEach(cand => {
+                    peerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(err => {});
+                });
+                pendingCandidates = [];
+            }
+        }
+
+        function createPeerConnection(isVideo) {
+            peerConnection = new RTCPeerConnection(rtcConfig);
+
+            peerConnection.ontrack = function(event) {
+                if (event.streams && event.streams[0]) {
+                    if (isVideo) {
+                        const rVid = document.getElementById('remoteVideo');
+                        rVid.srcObject = event.streams[0];
+                        rVid.play().catch(e=>{});
+                    } else {
+                        const rAud = document.getElementById('remoteAudio');
+                        rAud.srcObject = event.streams[0];
+                        rAud.play().catch(e=>{});
+                    }
+                }
+            };
+
+            peerConnection.onicecandidate = function(event) {
+                if (event.candidate) {
+                    sendSignal({
+                        type: 'ice_candidate',
+                        target_id: currentCallTargetId,
+                        candidate: event.candidate
+                    });
+                }
+            };
+
+            return peerConnection;
+        }
+
+        window.startCall = function(targetUserId, targetUsername, callType) {
+            currentCallTargetId = targetUserId;
+            activeCallType = callType;
+            pendingCandidates = [];
+
+            // 1. Show Outgoing Calling Modal on Caller's screen IMMEDIATELY
+            document.getElementById('outCalleeName').innerText = `Calling @${targetUsername}...`;
+            document.getElementById('outCallType').innerText = `Ringing ${callType} Call...`;
+            const outModal = document.getElementById('outgoingCallModalBackdrop');
+            outModal.classList.remove('hidden');
+            outModal.classList.add('flex');
+
+            startRingtone();
+
+            const isVideo = callType === 'Video';
+
+            // 2. Acquire media stream & initialize peer connection
+            navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo })
+            .catch(err => {
+                console.log("Fallback to audio-only stream:", err);
+                return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            })
+            .then(async (stream) => {
+                localStream = stream;
+                document.getElementById('localVideo').srcObject = localStream;
+
+                if (!isVideo) {
+                    document.getElementById('voiceCallPlaceholder').classList.remove('hidden');
+                    document.getElementById('voiceCallPlaceholder').classList.add('flex');
+                    document.getElementById('voicePeerName').innerText = `Voice Call with @${targetUsername}`;
+                } else {
+                    document.getElementById('voiceCallPlaceholder').classList.add('hidden');
+                }
+
+                document.getElementById('activeCallTitle').innerText = `${callType} Call with @${targetUsername}`;
+
+                createPeerConnection(isVideo);
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+
+                sendSignal({
+                    type: 'call_offer',
+                    target_id: currentCallTargetId,
+                    call_type: callType,
+                    sdp: offer
+                });
+
+            })
+            .catch(err => {
+                console.log("Media access error:", err);
+                showToast('Camera/Mic Error', 'Could not access audio/video devices.');
+                closeAllCallModals();
+            });
+        };
+
+        async function acceptCall() {
+            stopRingtone();
+            const modal = document.getElementById('incomingCallModalBackdrop');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+
+            if (!pendingCallOffer) return;
+
+            const offer = pendingCallOffer;
+            currentCallTargetId = offer.sender_id;
+            activeCallType = offer.call_type;
+            pendingCandidates = [];
+            const isVideo = activeCallType === 'Video';
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo }).catch(err => {
+                    return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                });
+                document.getElementById('localVideo').srcObject = localStream;
+
+                if (!isVideo) {
+                    document.getElementById('voiceCallPlaceholder').classList.remove('hidden');
+                    document.getElementById('voiceCallPlaceholder').classList.add('flex');
+                    document.getElementById('voicePeerName').innerText = `Voice Call with @${offer.sender_username}`;
+                } else {
+                    document.getElementById('voiceCallPlaceholder').classList.add('hidden');
+                }
+
+                document.getElementById('activeCallTitle').innerText = `${activeCallType} Call with @${offer.sender_username}`;
+                
+                // Show Active Call Screen for Receiver
+                const activeModal = document.getElementById('activeCallModalBackdrop');
+                activeModal.classList.remove('hidden');
+                activeModal.classList.add('flex');
+
+                createPeerConnection(isVideo);
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                const remoteOfferDesc = new RTCSessionDescription(offer.sdp);
+                await peerConnection.setRemoteDescription(remoteOfferDesc);
+                flushPendingIceCandidates();
+
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+
+                sendSignal({
+                    type: 'call_answer',
+                    target_id: currentCallTargetId,
+                    sdp: answer
+                });
+
+                startCallTimer();
+
+            } catch(err) {
+                console.log("acceptCall error:", err);
+                showToast('Call Error', 'Could not start call media stream.');
+                closeAllCallModals();
+            }
+        }
+
+        function declineCall() {
+            stopRingtone();
+            const modal = document.getElementById('incomingCallModalBackdrop');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+
+            if (pendingCallOffer) {
+                sendSignal({
+                    type: 'call_declined',
+                    target_id: pendingCallOffer.sender_id
+                });
+            }
+            pendingCallOffer = null;
+        }
+
+        function endWebRTCCall() {
+            if (currentCallTargetId) {
+                sendSignal({
+                    type: 'call_ended',
+                    target_id: currentCallTargetId
+                });
+            }
+            closeAllCallModals();
+        }
+
+        function closeAllCallModals() {
+            stopRingtone();
+            stopCallTimer();
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            ['outgoingCallModalBackdrop', 'incomingCallModalBackdrop', 'activeCallModalBackdrop'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+            });
+
+            currentCallTargetId = null;
+            pendingCallOffer = null;
+            pendingCandidates = [];
+        }
+
+        function toggleMuteMic() {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    const btn = document.getElementById('micToggleBtn');
+                    if (audioTrack.enabled) {
+                        btn.className = 'w-12 h-12 rounded-full bg-gray-800 text-white hover:bg-gray-700 flex items-center justify-center text-lg transition-all';
+                    } else {
+                        btn.className = 'w-12 h-12 rounded-full bg-red-500 text-white hover:bg-red-600 flex items-center justify-center text-lg transition-all';
+                    }
+                }
+            }
+        }
+
+        function toggleCamera() {
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    const btn = document.getElementById('camToggleBtn');
+                    if (videoTrack.enabled) {
+                        btn.className = 'w-12 h-12 rounded-full bg-gray-800 text-white hover:bg-gray-700 flex items-center justify-center text-lg transition-all';
+                    } else {
+                        btn.className = 'w-12 h-12 rounded-full bg-red-500 text-white hover:bg-red-600 flex items-center justify-center text-lg transition-all';
+                    }
+                }
+            }
+        }
+
+        function startCallTimer() {
+            stopCallTimer();
+            let seconds = 0;
+            const timerEl = document.getElementById('activeCallTimer');
+            callTimerInterval = setInterval(() => {
+                seconds++;
+                const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+                const secs = String(seconds % 60).padStart(2, '0');
+                if (timerEl) timerEl.innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopCallTimer() {
+            if (callTimerInterval) {
+                clearInterval(callTimerInterval);
+                callTimerInterval = null;
+            }
+            const timerEl = document.getElementById('activeCallTimer');
+            if (timerEl) timerEl.innerText = '00:00';
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

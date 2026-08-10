@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block page_title %}Chat{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-[calc(100vh-65px)] bg-[var(--bg-app)] transition-colors duration-300">
+    
+    <!-- Conversation Header -->
+    <div class="bg-[var(--bg-card)] px-6 py-3 border-b border-[var(--border-color)] flex items-center justify-between shadow-sm z-10 shrink-0">
+        <div class="flex items-center gap-3.5">
+            <a href="{% url 'chats' %}" class="w-9 h-9 rounded-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--border-color)] transition-all">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+
+            <div class="relative shrink-0">
+                {% if friend_profile and friend_profile.profile_picture %}
+                <img src="{{ friend_profile.profile_picture.url }}" alt="{{ friend.username }}" class="w-10 h-10 rounded-full object-cover">
+                {% else %}
+                <div class="w-10 h-10 rounded-full bg-[var(--primary-light)] text-[var(--primary)] font-bold text-sm flex items-center justify-center">
+                    {{ friend.username|slice:":1"|upper }}
+                </div>
+                {% endif %}
+
+                {% if friend_status and friend_status.online %}
+                <span class="w-3 h-3 rounded-full bg-[var(--online-green)] border-2 border-[var(--bg-card)] absolute bottom-0 right-0"></span>
+                {% else %}
+                <span class="w-3 h-3 rounded-full bg-gray-400 border-2 border-[var(--bg-card)] absolute bottom-0 right-0"></span>
+                {% endif %}
+            </div>
+
+            <div>
+                <h2 class="font-outfit font-bold text-[var(--text-main)] text-base leading-tight">{{ friend.username }}</h2>
+                {% if friend_status and friend_status.online %}
+                <span class="text-xs text-[var(--online-green)] font-medium flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[var(--online-green)] animate-pulse"></span> Online
+                </span>
+                {% else %}
+                <span class="text-xs text-[var(--text-muted)]">
+                    Last seen {{ friend_status.last_seen|date:"d M, h:i A" }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Voice & Video Call Action Buttons -->
+        <div class="flex items-center gap-2">
+            <button onclick="triggerCall('Voice')" class="w-9 h-9 rounded-full bg-emerald-500/10 text-[var(--online-green)] hover:bg-[var(--online-green)] hover:text-white flex items-center justify-center transition-all shadow-sm" title="Voice Call">
+                <i class="fa-solid fa-phone text-sm"></i>
+            </button>
+            <button onclick="triggerCall('Video')" class="w-9 h-9 rounded-full bg-[var(--primary-light)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white flex items-center justify-center transition-all shadow-sm" title="Video Call">
+                <i class="fa-solid fa-video text-sm"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Messages Display Area -->
+    <div id="messagesArea" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
+        {% regroup messages by created_at|date:"Y-m-d" as message_dates %}
+        
+        {% for group in message_dates %}
+        <!-- Date Divider Pill -->
+        <div class="flex justify-center my-3 date-group-pill" data-date="{{ group.grouper }}">
+            <span class="px-3.5 py-1 bg-[var(--bg-input)] text-[var(--text-muted)] border border-[var(--border-color)] text-[11px] font-semibold rounded-full shadow-xs">
+                {{ group.list.0.created_at|date:"d M Y" }}
+            </span>
+        </div>
+
+        {% for msg in group.list %}
+        <div class="flex flex-col max-w-[80%] sm:max-w-[70%] {% if msg.sender == user %}self-end items-end{% else %}self-start items-start{% endif %}" id="msg-{{ msg.id }}">
+            <div class="px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm break-words {% if msg.sender == user %}bg-[var(--bubble-sent-bg)] text-[var(--bubble-sent-text)] rounded-br-none{% else %}bg-[var(--bubble-received-bg)] text-[var(--bubble-received-text)] rounded-bl-none border border-[var(--border-color)]{% endif %}">
+                <span>{{ msg.message }}</span>
+                
+                <div class="flex items-center justify-end gap-1.5 text-[10px] mt-1 {% if msg.sender == user %}text-indigo-100{% else %}text-[var(--text-muted)]{% endif %}">
+                    <span>{{ msg.created_at|date:"h:i A" }}</span>
+                    {% if msg.sender == user %}
+                        <span class="read-tick {% if msg.is_read %}text-cyan-300 font-bold{% else %}text-white/60{% endif %}" title="{% if msg.is_read %}Seen{% else %}Sent{% endif %}">✓✓</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% empty %}
+        <div id="noMsgNotice" class="text-center py-16 text-[var(--text-muted)] text-xs">
+            <div class="w-12 h-12 rounded-full bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center text-lg mx-auto mb-2">
+                <i class="fa-solid fa-hand-wave"></i>
+            </div>
+            Say hello to {{ friend.username }} 👋
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Typing Indicator -->
+    <div id="typingIndicator" class="hidden px-6 py-1 text-xs italic text-[var(--primary)]">
+        {{ friend.username }} is typing...
+    </div>
+
+    <!-- Input Bar -->
+    <div class="bg-[var(--bg-card)] p-3 sm:px-6 border-t border-[var(--border-color)] shrink-0">
+        <form id="chatForm" onsubmit="sendMessage(event)" class="flex items-center gap-2">
+            <button type="button" class="w-10 h-10 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--border-color)] flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-paperclip text-sm"></i>
+            </button>
+
+            <input type="text" id="msgInput" placeholder="Type a message..." autocomplete="off" required oninput="handleTyping()" class="flex-1 px-4 py-3 rounded-full border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all">
+
+            <button type="submit" class="w-11 h-11 rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white flex items-center justify-center shadow-md shadow-[var(--primary-glow)] transition-all shrink-0">
+                <i class="fa-solid fa-paper-plane text-sm"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- WebRTC Call Modal -->
+<div id="callModalBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl">
+        <div class="w-20 h-20 rounded-full bg-indigo-50 text-[#6C5CE7] font-bold text-2xl flex items-center justify-center mx-auto mb-4 ring-4 ring-indigo-100">
+            {{ friend.username|slice:":1"|upper }}
+        </div>
+        <h3 id="callModalTitle" class="font-outfit font-bold text-xl text-gray-800">Calling {{ friend.username }}...</h3>
+        <p class="text-xs text-gray-400 mt-1">Connecting WebRTC call...</p>
+
+        <button onclick="closeCallModal()" class="mt-6 px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-semibold shadow-lg shadow-red-500/30 transition-all inline-flex items-center gap-2">
+            <i class="fa-solid fa-phone-slash"></i> End Call
+        </button>
+    </div>
+</div>
+
+<script>
+    const friendId = {{ friend.id }};
+    const roomName = "{{ room_name }}";
+    const currentUsername = "{{ user.username }}";
+
+    const messagesArea = document.getElementById('messagesArea');
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${roomName}/`);
+
+    chatSocket.onopen = function() {
+        // Send read receipt as soon as socket connects to mark all incoming messages as read live
+        sendReadReceipt();
+    };
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+
+        if (data.type === 'typing') {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (data.is_typing) {
+                typingIndicator.classList.remove('hidden');
+            } else {
+                typingIndicator.classList.add('hidden');
+            }
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+            return;
+        }
+
+        if (data.type === 'messages_read') {
+            // Live Update: Friend has read my sent messages! Update all my ticks to cyan live!
+            document.querySelectorAll('.read-tick').forEach(tick => {
+                tick.className = 'read-tick text-cyan-300 font-bold';
+                tick.title = 'Seen';
+            });
+            return;
+        }
+
+        if (data.type === 'chat_message') {
+            const noNotice = document.getElementById('noMsgNotice');
+            if (noNotice) noNotice.remove();
+
+            const isMine = data.sender === currentUsername;
+            
+            // Send read receipt if incoming message from friend while room is active
+            if (!isMine) {
+                sendReadReceipt();
+            }
+
+            // Check if date pill exists for today
+            const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            let lastPill = document.querySelector('.date-group-pill:last-of-type');
+            if (!lastPill) {
+                const datePill = document.createElement('div');
+                datePill.className = 'flex justify-center my-3 date-group-pill';
+                datePill.innerHTML = `<span class="px-3.5 py-1 bg-gray-200/80 text-gray-600 text-[11px] font-semibold rounded-full shadow-xs">${todayStr}</span>`;
+                messagesArea.appendChild(datePill);
+            }
+
+            const msgRow = document.createElement('div');
+            msgRow.className = `flex flex-col max-w-[80%] sm:max-w-[70%] ${isMine ? 'self-end items-end' : 'self-start items-start'}`;
+            msgRow.id = `msg-${data.message_id}`;
+
+            msgRow.innerHTML = `
+                <div class="px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm break-words ${isMine ? 'bg-[#6C5CE7] text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}">
+                    <span>${escapeHtml(data.message)}</span>
+                    <div class="flex items-center justify-end gap-1.5 text-[10px] mt-1 ${isMine ? 'text-indigo-100' : 'text-gray-400'}">
+                        <span>${data.time}</span>
+                        ${isMine ? '<span class="read-tick text-white/60" title="Sent">✓✓</span>' : ''}
+                    </div>
+                </div>
+            `;
+
+            messagesArea.appendChild(msgRow);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+            document.getElementById('typingIndicator').classList.add('hidden');
+        }
+    };
+
+    function sendReadReceipt() {
+        if (chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({
+                'type': 'read_receipt',
+                'sender_id': friendId
+            }));
+        }
+    }
+
+    function sendMessage(event) {
+        event.preventDefault();
+        const input = document.getElementById('msgInput');
+        const text = input.value.trim();
+        if (!text) return;
+
+        if (chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({
+                'type': 'chat_message',
+                'message': text,
+                'receiver_id': friendId
+            }));
+            input.value = '';
+        } else {
+            document.getElementById('chatForm').submit();
+        }
+    }
+
+    let typingTimeout;
+    function handleTyping() {
+        if (chatSocket.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({
+                'type': 'typing',
+                'is_typing': true
+            }));
+
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                chatSocket.send(JSON.stringify({
+                    'type': 'typing',
+                    'is_typing': false
+                }));
+            }, 1500);
+        }
+    }
+
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function triggerCall(type) {
+        if (window.startCall) {
+            window.startCall(friendId, "{{ friend.username }}", type);
+        }
+    }
+</script>
+{% endblock %}

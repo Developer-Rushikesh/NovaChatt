@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block page_title %}My Friends{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
+    <h3 class="font-outfit font-bold text-gray-800 text-base mb-2">Friends List</h3>
+
+    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
+        {% for friend in friends %}
+        <div class="flex items-center justify-between p-4 hover:bg-gray-50/80 transition-all">
+            <div class="flex items-center gap-4 min-w-0">
+                <div class="relative shrink-0">
+                    {% if friend.profile and friend.profile.profile_picture %}
+                    <img src="{{ friend.profile.profile_picture.url }}" alt="{{ friend.username }}" class="w-12 h-12 rounded-full object-cover">
+                    {% else %}
+                    <div class="w-12 h-12 rounded-full bg-indigo-50 text-[#6C5CE7] font-bold text-base flex items-center justify-center">
+                        {{ friend.username|slice:":1"|upper }}
+                    </div>
+                    {% endif %}
+
+                    {% if friend.status and friend.status.online %}
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#00B894] border-2 border-white absolute bottom-0 right-0"></span>
+                    {% else %}
+                    <span class="w-3.5 h-3.5 rounded-full bg-gray-300 border-2 border-white absolute bottom-0 right-0"></span>
+                    {% endif %}
+                </div>
+
+                <div class="min-w-0">
+                    <h4 class="font-semibold text-sm text-gray-800 truncate">{{ friend.username }}</h4>
+                    <p class="text-xs text-gray-400 truncate">{{ friend.email }}</p>
+                </div>
+            </div>
+
+            <a href="{% url 'chat' user_id=friend.id %}" class="px-4 py-2 bg-[#6C5CE7] hover:bg-[#5849D6] text-white rounded-xl text-xs font-semibold shadow-sm transition-all inline-flex items-center gap-1.5">
+                <i class="fa-solid fa-comments"></i> Message
+            </a>
+        </div>
+        {% empty %}
+        <div class="p-12 text-center text-gray-400">
+            <div class="w-16 h-16 bg-indigo-50 text-[#6C5CE7] rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <h3 class="font-outfit font-bold text-gray-800 text-base">No Friends Added Yet</h3>
+            <p class="text-xs text-gray-400 mt-1 max-w-xs mx-auto">Scan friend QR codes or search contacts to grow your network!</p>
+            <button onclick="openQRModal()" class="mt-4 px-6 py-2.5 bg-[#6C5CE7] hover:bg-[#5849D6] text-white rounded-xl text-xs font-semibold shadow-md transition-all inline-flex items-center gap-2">
+                <i class="fa-solid fa-qrcode"></i> Scan QR Code
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

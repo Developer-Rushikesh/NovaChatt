@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block page_title %}Contacts & Search{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
+    <!-- Search Form -->
+    <form method="GET" action="{% url 'search' %}" class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-[var(--text-muted)] text-sm"></i>
+        <input type="text" name="q" value="{{ query }}" placeholder="Search users by username or email..." class="w-full pl-11 pr-4 py-3 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-sm transition-all">
+    </form>
+
+    <div class="flex items-center justify-between">
+        <h3 class="font-outfit font-bold text-[var(--text-main)] text-base">Search Results</h3>
+        <button onclick="openQRModal()" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] transition-all flex items-center gap-1.5 shadow-sm">
+            <i class="fa-solid fa-qrcode"></i> Scan QR Code
+        </button>
+    </div>
+
+    <!-- Results Cards List -->
+    <div class="bg-[var(--bg-card)] rounded-3xl border border-[var(--border-color)] shadow-sm overflow-hidden divide-y divide-[var(--border-color)]">
+        {% for item in users_data %}
+        <div class="flex items-center justify-between p-4 hover:bg-[var(--bg-card-hover)] transition-all">
+            <div class="flex items-center gap-4 min-w-0">
+                {% if item.user.profile and item.user.profile.profile_picture %}
+                <img src="{{ item.user.profile.profile_picture.url }}" alt="{{ item.user.username }}" class="w-12 h-12 rounded-full object-cover shrink-0">
+                {% else %}
+                <div class="w-12 h-12 rounded-full bg-[var(--primary-light)] text-[var(--primary)] font-bold text-base flex items-center justify-center shrink-0">
+                    {{ item.user.username|slice:":1"|upper }}
+                </div>
+                {% endif %}
+
+                <div class="min-w-0">
+                    <h4 class="font-semibold text-sm text-[var(--text-main)] truncate">{{ item.user.username }}</h4>
+                    <p class="text-xs text-[var(--text-muted)] truncate">{{ item.user.email }}</p>
+                </div>
+            </div>
+
+            <div>
+                {% if item.is_friend %}
+                <a href="{% url 'chat' user_id=item.user.id %}" class="px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white rounded-xl text-xs font-semibold shadow-sm transition-all inline-flex items-center gap-1.5">
+                    <i class="fa-solid fa-comments"></i> Chat
+                </a>
+                {% elif item.request_sent %}
+                <span class="px-3 py-1.5 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)] border border-[var(--border-color)] text-xs font-medium">
+                    Request Sent
+                </span>
+                {% else %}
+                <a href="{% url 'send_request' user_id=item.user.id %}" class="px-4 py-2 bg-[var(--online-green)] hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold shadow-sm transition-all inline-flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-plus"></i> Add Friend
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="p-12 text-center text-[var(--text-muted)]">
+            <div class="w-16 h-16 bg-[var(--primary-light)] text-[var(--primary)] rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                <i class="fa-solid fa-user-slash"></i>
+            </div>
+            <p class="text-xs text-[var(--text-muted)]">No users found matching "{{ query }}"</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

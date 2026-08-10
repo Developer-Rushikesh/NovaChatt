@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block page_title %}Calls Log{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
+    <!-- Filter Chips -->
+    <div class="flex items-center gap-2">
+        <button id="filterAllBtn" onclick="filterCalls('all')" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--primary)] text-white transition-all shadow-sm">All Calls</button>
+        <button id="filterMissedBtn" onclick="filterCalls('missed')" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] transition-all">Missed</button>
+    </div>
+
+    <!-- Calls List -->
+    <div class="bg-[var(--bg-card)] rounded-3xl border border-[var(--border-color)] shadow-sm overflow-hidden divide-y divide-[var(--border-color)]">
+        {% for item in logs_data %}
+        <div class="call-item-row flex items-center gap-4 p-4 hover:bg-[var(--bg-card-hover)] transition-all" data-status="{{ item.log.status|lower }}">
+            <!-- Avatar -->
+            <div class="relative shrink-0">
+                {% if item.profile and item.profile.profile_picture %}
+                <img src="{{ item.profile.profile_picture.url }}" alt="{{ item.other_user.username }}" class="w-12 h-12 rounded-full object-cover">
+                {% else %}
+                <div class="w-12 h-12 rounded-full bg-[var(--primary-light)] text-[var(--primary)] font-bold text-base flex items-center justify-center">
+                    {{ item.other_user.username|slice:":1"|upper }}
+                </div>
+                {% endif %}
+
+                {% if item.status and item.status.online %}
+                <span class="w-3.5 h-3.5 rounded-full bg-[var(--online-green)] border-2 border-[var(--bg-card)] absolute bottom-0 right-0"></span>
+                {% else %}
+                <span class="w-3.5 h-3.5 rounded-full bg-gray-400 border-2 border-[var(--bg-card)] absolute bottom-0 right-0"></span>
+                {% endif %}
+            </div>
+
+            <!-- Call Info -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="font-semibold text-sm text-[var(--text-main)] truncate">@{{ item.other_user.username }}</span>
+                    <span class="text-[11px] text-[var(--text-muted)] font-medium">{{ item.log.created_at|date:"d M, h:i A" }}</span>
+                </div>
+                
+                <div class="flex items-center gap-2 text-xs">
+                    <!-- Call Type Badge (Voice or Video) -->
+                    {% if item.log.call_type == 'Video' %}
+                    <span class="px-2 py-0.5 rounded-md bg-[var(--primary-light)] text-[var(--primary)] font-semibold text-[10px] inline-flex items-center gap-1">
+                        <i class="fa-solid fa-video text-[9px]"></i> Video
+                    </span>
+                    {% else %}
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-[var(--online-green)] font-semibold text-[10px] inline-flex items-center gap-1">
+                        <i class="fa-solid fa-phone text-[9px]"></i> Voice
+                    </span>
+                    {% endif %}
+
+                    <!-- Direction & Status -->
+                    {% if item.is_outgoing %}
+                        {% if item.log.status == 'Completed' %}
+                        <span class="text-[var(--primary)] font-medium flex items-center gap-1 text-[11px]">
+                            <i class="fa-solid fa-arrow-up-right text-[10px]"></i> Outgoing (Connected)
+                        </span>
+                        {% elif item.log.status == 'Declined' %}
+                        <span class="text-amber-500 font-medium flex items-center gap-1 text-[11px]">
+                            <i class="fa-solid fa-arrow-up-right text-[10px]"></i> Outgoing (Declined)
+                        </span>
+                        {% else %}
+                        <span class="text-[var(--text-muted)] font-medium flex items-center gap-1 text-[11px]">
+                            <i class="fa-solid fa-arrow-up-right text-[10px]"></i> Outgoing (Unanswered)
+                        </span>
+                        {% endif %}
+                    {% else %}
+                        {% if item.log.status == 'Completed' %}
+                        <span class="text-[var(--online-green)] font-medium flex items-center gap-1 text-[11px]">
+                            <i class="fa-solid fa-arrow-down-left text-[10px]"></i> Incoming (Accepted)
+                        </span>
+                        {% elif item.log.status == 'Declined' %}
+                        <span class="text-amber-500 font-medium flex items-center gap-1 text-[11px]">
+                            <i class="fa-solid fa-xmark text-[10px]"></i> Incoming (Declined)
+                        </span>
+                        {% else %}
+                        <span class="text-rose-500 font-medium flex items-center gap-1 text-[11px]">
+                            <i class="fa-solid fa-arrow-down-left text-[10px]"></i> Missed Call
+                        </span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Call Back Action Buttons -->
+            <div class="flex items-center gap-2">
+                <button onclick="window.startCall({{ item.other_user.id }}, '{{ item.other_user.username }}', 'Voice')" class="w-9 h-9 rounded-full bg-emerald-500/10 text-[var(--online-green)] hover:bg-[var(--online-green)] hover:text-white flex items-center justify-center transition-all shadow-sm" title="Voice Call">
+                    <i class="fa-solid fa-phone text-xs"></i>
+                </button>
+                <button onclick="window.startCall({{ item.other_user.id }}, '{{ item.other_user.username }}', 'Video')" class="w-9 h-9 rounded-full bg-[var(--primary-light)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white flex items-center justify-center transition-all shadow-sm" title="Video Call">
+                    <i class="fa-solid fa-video text-xs"></i>
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="p-12 text-center text-[var(--text-muted)]">
+            <div class="w-16 h-16 bg-[var(--primary-light)] text-[var(--primary)] rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                <i class="fa-solid fa-phone-volume"></i>
+            </div>
+            <h3 class="font-outfit font-bold text-[var(--text-main)] text-base">No Call History</h3>
+            <p class="text-xs text-[var(--text-muted)] mt-1 max-w-xs mx-auto">Voice and video call records will appear here.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    function filterCalls(type) {
+        const allBtn = document.getElementById('filterAllBtn');
+        const missedBtn = document.getElementById('filterMissedBtn');
+        const rows = document.querySelectorAll('.call-item-row');
+
+        if (type === 'all') {
+            allBtn.className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--primary)] text-white transition-all shadow-sm";
+            missedBtn.className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] transition-all";
+            rows.forEach(r => r.style.display = 'flex');
+        } else {
+            missedBtn.className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--primary)] text-white transition-all shadow-sm";
+            allBtn.className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] transition-all";
+            rows.forEach(r => {
+                const status = r.getAttribute('data-status');
+                if (status === 'missed' || status === 'unanswered') {
+                    r.style.display = 'flex';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}

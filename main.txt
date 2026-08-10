@@ -1,0 +1,16 @@
+1. ui change all frontend 
+
+ek person chi profile photo other person show 
+
+2. user register karatach to login time id and pass naki username karan security purpose
+3.online /ofline status show ,last seen show 
+4.every user login zala each user unique qr to qr scan karun other person freind request send continoue chat
+5.ui ek dam clean required , chat edit option 
+6.voice and vedio call as possible 
+
+
+one more kya chat other kahi backend me as it is msg see kar sakte hai other page per 
+
+increase security becose deploye app .
+
+face unlock feature to login time optional (profile se feature on /of option then login time face detect )

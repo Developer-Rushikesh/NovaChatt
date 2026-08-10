@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block page_title %}Chats{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
+    <!-- Search Box -->
+    <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-[var(--text-muted)] text-sm"></i>
+        <input type="text" id="chatSearchInput" onkeyup="filterChats()" placeholder="Search chats or friends..." class="w-full pl-11 pr-4 py-3 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-sm transition-all">
+    </div>
+
+    <!-- Filter Chips -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <button onclick="filterChip('all', this)" class="chip-btn px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--primary)] text-white transition-all shadow-sm">All</button>
+        <button onclick="filterChip('unread', this)" class="chip-btn px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] transition-all">Unread</button>
+        <button onclick="filterChip('groups', this)" class="chip-btn px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] transition-all">Groups</button>
+        <button onclick="filterChip('stars', this)" class="chip-btn px-4 py-1.5 rounded-full text-xs font-semibold bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] transition-all">Starred</button>
+    </div>
+
+    <!-- Chat Item Cards List -->
+    <div id="chatList" class="space-y-2">
+        {% for item in users_list %}
+        <a href="{% url 'chat' user_id=item.user.id %}" class="chat-item flex items-center gap-4 p-4 bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] shadow-sm hover:shadow-md hover:border-[var(--primary-light)] transition-all group" data-username="{{ item.user.username|lower }}" data-unread="{{ item.unread }}">
+            
+            <div class="relative shrink-0">
+                {% if item.profile and item.profile.profile_picture %}
+                <img src="{{ item.profile.profile_picture.url }}" alt="{{ item.user.username }}" class="w-12 h-12 rounded-full object-cover">
+                {% else %}
+                <div class="w-12 h-12 rounded-full bg-[var(--primary-light)] text-[var(--primary)] font-bold text-base flex items-center justify-center">
+                    {{ item.user.username|slice:":1"|upper }}
+                </div>
+                {% endif %}
+
+                {% if item.status and item.status.online %}
+                <span class="w-3.5 h-3.5 rounded-full bg-[var(--online-green)] border-2 border-[var(--bg-card)] absolute bottom-0 right-0"></span>
+                {% else %}
+                <span class="w-3.5 h-3.5 rounded-full bg-gray-400 border-2 border-[var(--bg-card)] absolute bottom-0 right-0"></span>
+                {% endif %}
+            </div>
+
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="font-semibold text-sm text-[var(--text-main)] group-hover:text-[var(--primary)] transition-colors truncate">{{ item.user.username }}</span>
+                    {% if item.last_message %}
+                    <span class="text-[11px] text-[var(--text-muted)] shrink-0">{{ item.last_message.created_at|date:"h:i A" }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-[var(--text-muted)] truncate pr-2">
+                        {% if item.last_message %}
+                            {% if item.last_message.sender == user %}You: {% endif %}{{ item.last_message.message }}
+                        {% else %}
+                            Tap to start chatting...
+                        {% endif %}
+                    </p>
+                    {% if item.unread > 0 %}
+                    <span class="w-5 h-5 rounded-full bg-[var(--primary)] text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                        {{ item.unread }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% empty %}
+        <div class="p-12 text-center bg-[var(--bg-card)] rounded-3xl border border-[var(--border-color)] shadow-sm text-[var(--text-muted)]">
+            <div class="w-16 h-16 bg-[var(--primary-light)] text-[var(--primary)] rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                <i class="fa-solid fa-comments"></i>
+            </div>
+            <h3 class="font-outfit font-bold text-[var(--text-main)] text-base">No Conversations Yet</h3>
+            <p class="text-xs text-[var(--text-muted)] mt-1 max-w-xs mx-auto">Scan a friend's QR code or search contacts to start chatting!</p>
+            <button onclick="openQRModal()" class="mt-4 px-6 py-2.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white rounded-xl text-xs font-semibold shadow-md transition-all inline-flex items-center gap-2">
+                <i class="fa-solid fa-qrcode"></i> Scan QR Code
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Floating Action Button (FAB) -->
+<button onclick="openQRModal()" class="fixed bottom-20 lg:bottom-8 right-6 w-14 h-14 rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white flex items-center justify-center text-xl shadow-xl shadow-[var(--primary-glow)] hover:scale-105 transition-all z-30" title="Scan QR Code to Add Friend">
+    <i class="fa-solid fa-plus text-white"></i>
+</button>
+
+<script>
+    function filterChats() {
+        const query = document.getElementById('chatSearchInput').value.toLowerCase();
+        const items = document.querySelectorAll('.chat-item');
+        items.forEach(item => {
+            const name = item.getAttribute('data-username');
+            if (name.includes(query)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function filterChip(type, btn) {
+        document.querySelectorAll('.chip-btn').forEach(b => {
+            b.classList.remove('bg-[var(--primary)]', 'text-white');
+            b.classList.add('bg-[var(--bg-card)]', 'border', 'border-[var(--border-color)]', 'text-[var(--text-muted)]');
+        });
+        btn.classList.remove('bg-[var(--bg-card)]', 'border', 'border-[var(--border-color)]', 'text-[var(--text-muted)]');
+        btn.classList.add('bg-[var(--primary)]', 'text-white');
+
+        const items = document.querySelectorAll('.chat-item');
+        items.forEach(item => {
+            const unread = parseInt(item.getAttribute('data-unread')) || 0;
+            if (type === 'all') {
+                item.style.display = 'flex';
+            } else if (type === 'unread') {
+                item.style.display = unread > 0 ? 'flex' : 'none';
+            } else {
+                item.style.display = 'flex';
+            }
+        });
+    }
+</script>
+{% endblock %}

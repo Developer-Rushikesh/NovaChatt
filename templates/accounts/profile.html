@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block page_title %}Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- Profile Header Card -->
+    <div class="bg-[var(--bg-card)] rounded-3xl p-6 sm:p-8 border border-[var(--border-color)] shadow-sm text-center">
+        {% if error %}
+        <div class="bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 p-3 rounded-xl text-xs text-left mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> {{ error }}
+        </div>
+        {% endif %}
+
+        {% if success %}
+        <div class="bg-emerald-500/10 border border-emerald-500/30 text-[var(--online-green)] p-3 rounded-xl text-xs text-left mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-[var(--online-green)]"></i> {{ success }}
+        </div>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+
+            <div class="relative inline-block mx-auto">
+                {% if profile.profile_picture %}
+                <img src="{{ profile.profile_picture.url }}" alt="{{ user.username }}" id="avatarPreview" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover ring-4 ring-[var(--primary-light)] mx-auto shadow-md">
+                {% else %}
+                <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-bold text-3xl ring-4 ring-[var(--primary-light)] mx-auto shadow-md">
+                    {{ user.username|slice:":1"|upper }}
+                </div>
+                {% endif %}
+
+                <label for="profile_picture" class="absolute bottom-0 right-0 w-9 h-9 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white rounded-full flex items-center justify-center cursor-pointer shadow-md transition-all" title="Change Avatar">
+                    <i class="fa-solid fa-camera text-sm"></i>
+                </label>
+                <input type="file" id="profile_picture" name="profile_picture" accept="image/*" class="hidden" onchange="previewImage(this)">
+            </div>
+
+            <div>
+                <h2 class="font-outfit font-extrabold text-2xl text-[var(--text-main)]">{{ user.username }}</h2>
+                <span class="text-xs text-[var(--online-green)] font-medium inline-flex items-center gap-1 mt-0.5">
+                    <span class="w-2 h-2 rounded-full bg-[var(--online-green)] animate-pulse"></span> Online
+                </span>
+            </div>
+
+            <div class="space-y-4 text-left pt-4">
+                <div>
+                    <label for="username" class="block text-xs font-semibold text-[var(--text-muted)] mb-1">Username</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-at absolute left-4 top-3.5 text-[var(--text-muted)] text-xs"></i>
+                        <input type="text" id="username" name="username" value="{{ user.username }}" required class="w-full pl-10 pr-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="email" class="block text-xs font-semibold text-[var(--text-muted)] mb-1">Email Address</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-4 top-3.5 text-[var(--text-muted)] text-xs"></i>
+                        <input type="email" id="email" name="email" value="{{ user.email }}" required class="w-full pl-10 pr-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="bio" class="block text-xs font-semibold text-[var(--text-muted)] mb-1">About / Bio</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-quote-left absolute left-4 top-3.5 text-[var(--text-muted)] text-xs"></i>
+                        <input type="text" id="bio" name="bio" value="{{ profile.bio }}" placeholder="Building ideas, creating impact." class="w-full pl-10 pr-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="phone" class="block text-xs font-semibold text-[var(--text-muted)] mb-1">Phone Number</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-phone absolute left-4 top-3.5 text-[var(--text-muted)] text-xs"></i>
+                        <input type="text" id="phone" name="phone" value="{{ profile.phone }}" placeholder="+91 98765 43210" class="w-full pl-10 pr-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-main)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-3.5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white rounded-xl font-semibold text-sm shadow-md shadow-[var(--primary-glow)] transition-all">
+                    Save Profile Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Quick Profile Action Cards -->
+    <div class="bg-[var(--bg-card)] rounded-3xl border border-[var(--border-color)] shadow-sm overflow-hidden divide-y divide-[var(--border-color)]">
+        <a href="#" onclick="openQRModal(); return false;" class="flex items-center justify-between p-5 hover:bg-[var(--bg-card-hover)] transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center text-lg shrink-0">
+                    <i class="fa-solid fa-qrcode"></i>
+                </div>
+                <div>
+                    <div class="font-semibold text-sm text-[var(--text-main)]">My QR Code</div>
+                    <div class="text-xs text-[var(--text-muted)]">View & share personal scanner code</div>
+                </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-[var(--text-muted)]"></i>
+        </a>
+
+        <a href="{% url 'settings' %}" class="flex items-center justify-between p-5 hover:bg-[var(--bg-card-hover)] transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center text-lg shrink-0">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <div>
+                    <div class="font-semibold text-sm text-[var(--text-main)]">App Settings</div>
+                    <div class="text-xs text-[var(--text-muted)]">Theme options, security & preferences</div>
+                </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-[var(--text-muted)]"></i>
+        </a>
+    </div>
+
+</div>
+
+<script>
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('avatarPreview');
+                if (img) {
+                    img.src = e.target.result;
+                }
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
+{% endblock %}
