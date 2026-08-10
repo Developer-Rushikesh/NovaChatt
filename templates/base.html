@@ -705,6 +705,13 @@
         }
 
         window.startCall = function(targetUserId, targetUsername, callType) {
+            targetUserId = parseInt(targetUserId) || 0;
+            if (targetUserId <= 0 || targetUserId === currentUserId) {
+                console.warn("[WebRTC] Self-call attempt prevented. targetUserId:", targetUserId, "currentUserId:", currentUserId);
+                showToast('Call Not Allowed', 'You cannot start a call with yourself. Please select another user.');
+                return;
+            }
+
             currentCallTargetId = targetUserId;
             activeCallType = callType;
             pendingCandidates = [];
