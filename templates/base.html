@@ -514,23 +514,28 @@
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                { urls: 'stun:stun.services.mozilla.com' }
             ]
         };
 
         function sendSignal(payload) {
-            // Dual Dispatch: WebSocket + HTTP POST Fallback to ensure target receives signal 100%
+            console.log("WebRTC sendSignal:", payload.type, payload.target_id);
             if (notifySocket && notifySocket.readyState === WebSocket.OPEN) {
                 notifySocket.send(JSON.stringify(payload));
+            } else {
+                fetch("/chat/api/send_call_signal/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: JSON.stringify(payload)
+                }).catch(err => console.error("Signal HTTP fallback error:", err));
             }
-            fetch("/chat/api/send_call_signal/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token }}"
-                },
-                body: JSON.stringify(payload)
-            }).catch(err => {});
         }
 
         function initNotificationSocket() {
@@ -540,14 +545,14 @@
 
             notifySocket.onmessage = async function(e) {
                 const data = JSON.parse(e.data);
+                console.log("WebRTC notification signal received:", data.type, data);
                 
                 if (data.type === 'new_message_alert') {
                     showToast(`Message from @${data.sender_username}`, data.message);
                 }
 
                 if (data.type === 'call_offer') {
-                    // Receiver gets incoming call!
-                    if (currentUserId === data.sender_id) return; // ignore self
+                    if (currentUserId === data.sender_id) return;
                     pendingCallOffer = data;
                     startRingtone();
 
@@ -557,7 +562,7 @@
                     document.getElementById('incCallType').innerText = `Incoming ${data.call_type} Call...`;
                     const avatarBox = document.getElementById('incCallerAvatar');
                     if (data.sender_avatar) {
-                        avatarBox.innerHTML = `<img src="${data.sender_avatar}" class="w-full h-full object-cover">`;
+                        avatarBox.innerHTML = `<img src="${data.sender_avatar}" class="w-full h-full object-cover rounded-full">`;
                     } else {
                         avatarBox.innerText = data.sender_username.slice(0, 1).toUpperCase();
                     }
@@ -570,7 +575,6 @@
                 if (data.type === 'call_answer') {
                     stopRingtone();
 
-                    // Close Caller's Outgoing Modal & Open Active Call Screen
                     const outModal = document.getElementById('outgoingCallModalBackdrop');
                     outModal.classList.add('hidden');
                     outModal.classList.remove('flex');
@@ -581,20 +585,22 @@
 
                     if (peerConnection && data.sdp) {
                         try {
-                            const desc = new RTCSessionDescription(data.sdp);
-                            await peerConnection.setRemoteDescription(desc);
-                            flushPendingIceCandidates();
-                            startCallTimer();
+                            if (peerConnection.signalingState === "have-local-offer") {
+                                const desc = new RTCSessionDescription(data.sdp);
+                                await peerConnection.setRemoteDescription(desc);
+                                flushPendingIceCandidates();
+                                startCallTimer();
+                            }
                         } catch(err) {
-                            console.log("Error setting remote answer SDP:", err);
+                            console.error("Error setting remote answer SDP:", err);
                         }
                     }
                 }
 
                 if (data.type === 'ice_candidate') {
                     if (data.candidate) {
-                        if (peerConnection && peerConnection.remoteDescription) {
-                            peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(err => {});
+                        if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+                            peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(err => console.error("ICE add candidate error:", err));
                         } else {
                             pendingCandidates.push(data.candidate);
                         }
@@ -622,30 +628,18 @@
         initNotificationSocket();
 
         function flushPendingIceCandidates() {
-            if (peerConnection && peerConnection.remoteDescription && pendingCandidates.length > 0) {
+            if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type && pendingCandidates.length > 0) {
+                console.log(`Flushing ${pendingCandidates.length} pending ICE candidates...`);
                 pendingCandidates.forEach(cand => {
-                    peerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(err => {});
+                    peerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(err => console.error("Error adding pending candidate:", err));
                 });
                 pendingCandidates = [];
             }
         }
 
         function createPeerConnection(isVideo) {
+            console.log("Creating RTCPeerConnection, isVideo =", isVideo);
             peerConnection = new RTCPeerConnection(rtcConfig);
-
-            peerConnection.ontrack = function(event) {
-                if (event.streams && event.streams[0]) {
-                    if (isVideo) {
-                        const rVid = document.getElementById('remoteVideo');
-                        rVid.srcObject = event.streams[0];
-                        rVid.play().catch(e=>{});
-                    } else {
-                        const rAud = document.getElementById('remoteAudio');
-                        rAud.srcObject = event.streams[0];
-                        rAud.play().catch(e=>{});
-                    }
-                }
-            };
 
             peerConnection.onicecandidate = function(event) {
                 if (event.candidate) {
@@ -654,6 +648,35 @@
                         target_id: currentCallTargetId,
                         candidate: event.candidate
                     });
+                }
+            };
+
+            peerConnection.ontrack = function(event) {
+                console.log("WebRTC ontrack received:", event.track.kind, event.streams);
+                const remoteStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+                
+                const rVid = document.getElementById('remoteVideo');
+                const rAud = document.getElementById('remoteAudio');
+
+                if (rVid) {
+                    rVid.srcObject = remoteStream;
+                    rVid.play().catch(err => console.warn("remoteVideo play error:", err));
+                }
+                if (rAud) {
+                    rAud.srcObject = remoteStream;
+                    rAud.play().catch(err => console.warn("remoteAudio play error:", err));
+                }
+            };
+
+            peerConnection.oniceconnectionstatechange = function() {
+                if (peerConnection) {
+                    console.log("ICE Connection State changed:", peerConnection.iceConnectionState);
+                }
+            };
+
+            peerConnection.onsignalingstatechange = function() {
+                if (peerConnection) {
+                    console.log("Signaling State changed:", peerConnection.signalingState);
                 }
             };
 
@@ -679,7 +702,7 @@
             // 2. Acquire media stream & initialize peer connection
             navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo })
             .catch(err => {
-                console.log("Fallback to audio-only stream:", err);
+                console.warn("Fallback to audio-only stream:", err);
                 return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             })
             .then(async (stream) => {
@@ -711,7 +734,7 @@
 
             })
             .catch(err => {
-                console.log("Media access error:", err);
+                console.error("Media access error:", err);
                 showToast('Camera/Mic Error', 'Could not access audio/video devices.');
                 closeAllCallModals();
             });
@@ -733,6 +756,7 @@
 
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo }).catch(err => {
+                    console.warn("Fallback to audio-only stream:", err);
                     return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 });
                 document.getElementById('localVideo').srcObject = localStream;
@@ -771,7 +795,7 @@
                 startCallTimer();
 
             } catch(err) {
-                console.log("acceptCall error:", err);
+                console.error("acceptCall error:", err);
                 showToast('Call Error', 'Could not start call media stream.');
                 closeAllCallModals();
             }
@@ -810,6 +834,14 @@
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
+
+            const rVid = document.getElementById('remoteVideo');
+            const rAud = document.getElementById('remoteAudio');
+            const lVid = document.getElementById('localVideo');
+
+            if (rVid) rVid.srcObject = null;
+            if (rAud) rAud.srcObject = null;
+            if (lVid) lVid.srcObject = null;
 
             if (peerConnection) {
                 peerConnection.close();
