@@ -109,9 +109,10 @@ WSGI_APPLICATION = 'chatappp.wsgi.application'
 ASGI_APPLICATION = 'chatappp.asgi.application'
 
 
-# Database Configuration - Uses Railway PostgreSQL when DATABASE_URL is present, falls back to SQLite for local dev
-DATABASE_URL = os.environ.get("DATABASE_URL")
-if DATABASE_URL:
+# Database Configuration - Uses Railway PostgreSQL when DATABASE_URL is present, tests localhost availability, or falls back to SQLite
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+if DATABASE_URL and "localhost" not in DATABASE_URL and "127.0.0.1" not in DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
@@ -119,6 +120,27 @@ if DATABASE_URL:
             ssl_require=False,
         )
     }
+elif DATABASE_URL and DATABASE_URL.startswith(("postgres://", "postgresql://")):
+    try:
+        import psycopg2
+        # Verify if local PostgreSQL instance is actively accepting connections
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=1)
+        conn.close()
+        DATABASES = {
+            "default": dj_database_url.config(
+                default=DATABASE_URL,
+                conn_max_age=600,
+                ssl_require=False,
+            )
+        }
+    except Exception:
+        # If localhost PostgreSQL is not running, fall back to SQLite to prevent startup crashes
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": BASE_DIR / "db.sqlite3",
+            }
+        }
 else:
     DATABASES = {
         "default": {
@@ -129,8 +151,8 @@ else:
 
 
 # Django Channels Redis Channel Layer for Production Real-Time Messaging
-REDIS_URL = os.getenv('REDIS_URL', '')
-if REDIS_URL:
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+if REDIS_URL and "localhost" not in REDIS_URL and "127.0.0.1" not in REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
