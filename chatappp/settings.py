@@ -110,21 +110,20 @@ ASGI_APPLICATION = 'chatappp.asgi.application'
 
 
 # Database Configuration - Uses Railway PostgreSQL when DATABASE_URL is present, falls back to SQLite for local dev
-DATABASE_URL = os.getenv('DATABASE_URL')
+DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
             conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=False
+            ssl_require=False,
         )
     }
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
 
